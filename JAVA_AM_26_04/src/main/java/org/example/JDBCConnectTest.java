@@ -14,10 +14,11 @@ public class JDBCConnectTest {
             Class.forName("org.mariadb.jdbc.Driver");
             String url = "jdbc:mariadb://127.0.0.1:3307/JDBC_AM_26_04?useUnicode=true&characterEncoding=utf8&autoReconnect=true&serverTimezone=Asia/Seoul";
             conn = DriverManager.getConnection(url, "root", "");
+            System.out.println();
             System.out.println("연결 성공!");
 
-            String sql = "INSERT INTO article";
-            sql += " SET regDate = NOW(),";
+            String sql = "INSERT INTO article ";
+            sql += "SET regDate = NOW(),";
             sql += "updateDate = NOW(),";
             sql += "title = CONCAT('제목', SUBSTRING(RAND() * 1000 FROM 1 FOR 2)),";
             sql += "`body` = CONCAT('내용', SUBSTRING(RAND() * 1000 FROM 1 FOR 2));";
