@@ -24,7 +24,6 @@ public class Main {
 
             if (cmd.equals("article write")) {
                 System.out.println("== 글쓰기 ==");
-                id = lastArticleId++;
 
                 System.out.print("제목 : ");
                 String title = sc.nextLine().trim();
@@ -32,11 +31,9 @@ public class Main {
                 System.out.print("내용 : ");
                 String body = sc.nextLine().trim();
 
-                insertArticleToDb(id, title, body);
+                id = insertArticleToDb(title, body);
 
-                lastArticleId++;
-
-                System.out.printf("%d번째 게시물 작성 완료\n", lastArticleId);
+                System.out.printf("%d번째 게시물 작성 완료\n", id);
 
             } else if (cmd.equals("article list")) {
                 System.out.println("== 목록 ==");
@@ -55,36 +52,21 @@ public class Main {
             } else if (cmd.startsWith("article delete")) {
                 System.out.println("== 삭제 ==");
                 id = Integer.parseInt(cmd.split(" ")[2]);
-                Article foundArticle = getArticleById(id);
-                if (foundArticle == null) {
-                    System.out.println("삭제할 게시물 없다.");
-                    continue;
-                }
-                articles.remove(foundArticle);
 
-                System.out.println("%d번 게시글 삭제 완료");
+                deleteArticleToDb(id);
 
             } else if (cmd.startsWith("article modify")) {
                 System.out.println("== 게시글 수정 ==");
                 id = Integer.parseInt(cmd.split(" ")[2]);
 
-                Article foundArticle = getArticleById(id);
-
-                if (foundArticle == null) {
-                    System.out.println("수정할 게시판이 없습니다.");
-                    continue;
-                }
                 System.out.print("새로운 제목 : ");
                 String newTitle = sc.nextLine().trim();
 
                 System.out.print("새로운 내용 : ");
                 String newBody = sc.nextLine().trim();
 
-                foundArticle.setTitle(newTitle);
-                foundArticle.setBody(newBody);
+                updateArticleToDb(id, newTitle, newBody);
 
-
-                System.out.printf("%d번 게시글 수정 완료\n", id);
 
             } else if (cmd.startsWith("article detail")) {
                 System.out.println("== 게시글 상세보기 ==");
@@ -119,9 +101,11 @@ public class Main {
         return null;
     }
 
-    private static void insertArticleToDb(int id, String title, String body) {
+    private static int insertArticleToDb(String title, String body) {
         Connection conn = null;
         PreparedStatement pstmt = null;
+        ResultSet rs = null;
+        int receivedId = -1;
 
         try {
             String url = "jdbc:mariadb://127.0.0.1:3307/JDBC_AM_26_04?useUnicode=true&characterEncoding=utf8&autoReconnect=true&serverTimezone=Asia/Seoul";
@@ -132,16 +116,21 @@ public class Main {
 
             String sql = "INSERT INTO article SET regDate = NOW(), updateDate = NOW(), title = ?, `body` = ?";
 
-            pstmt = conn.prepareStatement(sql);
+            pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
             pstmt.setString(1, title);
             pstmt.setString(2, body);
             int affectedRow = pstmt.executeUpdate();
             System.out.println("affectedRow = " + affectedRow);
 
+            rs = pstmt.getGeneratedKeys();
+            if(rs.next()){
+                receivedId = rs.getInt(1);
+            }
+
             System.out.println("게시물이 DB에 저장 성공 😎");
 
         } catch (SQLException e) {
-            System.out.println("DB연결 실패 또는 에러" + e.getMessage());
+            System.out.println("DB연결 실패 또는 에러 : " + e.getMessage());
         } finally {
             try {
                 if (conn != null && !conn.isClosed()) {
@@ -151,6 +140,8 @@ public class Main {
                 e.printStackTrace();
             }
         }
+        return receivedId;
+
     }
 
     private static List<Article> getArticleFromDb() {
@@ -186,7 +177,7 @@ public class Main {
             System.out.println("DB에 저장된 게시물 조회 성공!😎");
 
         } catch (SQLException e) {
-            System.out.println("DB연결 실패 또는 에러" + e.getMessage());
+            System.out.println("DB연결 실패 또는 에러 : " + e.getMessage());
         } finally {
 
             try {
@@ -205,6 +196,84 @@ public class Main {
             }
         }
         return articles;
+    }
+
+    private static void updateArticleToDb(int id, String newtitle, String newbody) {
+        Connection conn = null;
+        PreparedStatement pstmt = null;
+
+        try {
+            String url = "jdbc:mariadb://127.0.0.1:3307/JDBC_AM_26_04?useUnicode=true&characterEncoding=utf8&autoReconnect=true&serverTimezone=Asia/Seoul";
+            conn = DriverManager.getConnection(url, "root", "");
+
+            System.out.println();
+            System.out.println("연결 성공!");
+
+            String sql = "Update article SET regDate = NOW(), updateDate = NOW(), title = ?, `body` = ? WHERE id = ?";
+
+            pstmt = conn.prepareStatement(sql);
+            pstmt.setString(1, newtitle);
+            pstmt.setString(2, newbody);
+            pstmt.setInt(3, id);
+
+            int affectedRow = pstmt.executeUpdate();
+            System.out.println("affectedRow = " + affectedRow);
+
+            if(affectedRow > 0){
+                System.out.println(id + "번 게시물 수정 완료");
+            }else{
+                System.out.println("수정할 게시물을 찾을 수 없거나 존재하지 않음");
+            }
+
+        } catch (SQLException e) {
+            System.out.println("DB연결 실패 또는 에러 : " + e.getMessage());
+        } finally {
+            try {
+                if (conn != null && !conn.isClosed()) {
+                    conn.close();
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+    private static void deleteArticleToDb(int id) {
+        Connection conn = null;
+        PreparedStatement pstmt = null;
+
+        try {
+            String url = "jdbc:mariadb://127.0.0.1:3307/JDBC_AM_26_04?useUnicode=true&characterEncoding=utf8&autoReconnect=true&serverTimezone=Asia/Seoul";
+            conn = DriverManager.getConnection(url, "root", "");
+
+            System.out.println();
+            System.out.println("연결 성공!");
+
+            String sql = "DELETE FROM article WHERE id = ?";
+
+            pstmt = conn.prepareStatement(sql);
+
+            pstmt.setInt(1, id);
+
+            int affectedRow = pstmt.executeUpdate();
+            System.out.println("affectedRow = " + affectedRow);
+
+            if(affectedRow > 0){
+                System.out.println(id + "번 게시물 삭제 완료");
+            }else{
+                System.out.println("삭제할 게시물을 찾을 수 없거나 존재하지 않음");
+            }
+
+        } catch (SQLException e) {
+            System.out.println("DB연결 실패 또는 에러 : " + e.getMessage());
+        } finally {
+            try {
+                if (conn != null && !conn.isClosed()) {
+                    conn.close();
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
     }
 }
 
