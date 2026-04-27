@@ -1,93 +1,181 @@
 package org.example;
 
+import org.example.dto.Article;
+import org.example.util.DBUtil;
+import org.example.util.SecSql;
+
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Scanner;
 
 public class App {
     static List<Article> articles = new ArrayList<>();
-    public void run(){
+    protected static Connection conn;
+
+    Scanner sc = new Scanner(System.in);
+    public void run() {
 
         System.out.println("== 프로그램 시작 ==");
-        Scanner sc = new Scanner(System.in);
+
         int id;
 
-        while (true) {
-            System.out.print("명령어 : ");
-            String cmd = sc.nextLine().trim();
+        try {
+            conn = DriverManager.getConnection("jdbc:mariadb://127.0.0.1:3307/JDBC_AM_26_04", "user", "password");
 
-            if (cmd.equals("exit")) {
-                break;
+            while (true) {
+                System.out.print("명령어 : ");
+                String cmd = sc.nextLine().trim();
+
+                if (cmd.equals("exit")) {break;}
+
+                else if (cmd.equals("members join")) {
+
+                    System.out.println("--회원가입--");
+                    String loginId ;
+                    String loginPw ;
+                    String loginPwConfirm ;
+                    String username ;
+
+                    while (true) {
+                        System.out.print("로그인 아이디 : ");
+                        loginId = sc.nextLine().trim();
+
+                        if (loginId.length() == 0 || loginId.contains(" ")) {
+                            System.out.println("아이디 입력");
+                            continue;
+                        }
+
+                        // 회원가입 하기 전에 입력한 아이디를 등록된 로그인 아이디 찾기
+                        boolean isLoginIdDuplicate = LoginIdDuplicate(loginId);
+
+                        System.out.println(isLoginIdDuplicate);
+
+                        if (isLoginIdDuplicate) {
+                            System.out.println(loginId + "은(는) 이미 사용중");
+                            break;
+                        }
+                    }
+
+                    while (true) {
+                        System.out.print("비밀번호 : ");
+                        loginPw = sc.nextLine().trim();
+
+                        if (loginPw.length() == 0 || loginPw.contains(" ")) {
+                            System.out.println("비밀번호 입력");
+                            continue;
+                        }
+
+                        System.out.print("비밀번호 확인 : ");
+                        loginPwConfirm = sc.nextLine().trim();
+
+                        if (!loginPw.equals(loginPwConfirm)) {
+                            System.out.println("비밀번호 일치하지 않음");
+                            continue;
+                        }
+                        break;
+                    }
+
+                    while (true) {
+                        System.out.print("유저이름 : ");
+                        username = sc.nextLine().trim();
+                        if (username.length() == 0 || username.contains(" ")) {
+                            System.out.println("유저이름은 공백으로 남길수 없고 나중에 수정 가능");
+                            continue;
+                        }
+                        break;
+                    }
+                    RollUpUser(username, loginId, loginPw);
+                    break;
+                }
+
+                else if (cmd.equals("article write")){
+                    System.out.println("== 글쓰기 ==");
+
+                    utilSecWriteToDB();
+                }
+                else if (cmd.equals("article list")) {
+                    System.out.println("== 목록 ==");
+                    List<Article> articles = getArticleFromDb();
+
+                    if (articles == null) {
+                        System.out.println("게시글이 없습니다.");
+                        continue;
+                    }
+
+                    utilSecListDB();
+
+                } else if (cmd.startsWith("article delete")) {
+                    System.out.println("== 삭제 ==");
+                    id = Integer.parseInt(cmd.split(" ")[2]);
+
+                    utilSecDeleteDB(id);
+
+                    // deleteArticleToDb(id);
+
+                } else if (cmd.startsWith("article modify")) {
+                    System.out.println("== 게시글 수정 ==");
+                    id = Integer.parseInt(cmd.split(" ")[2]);
+
+                    System.out.print("새로운 제목 : ");
+                    String newTitle = sc.nextLine().trim();
+
+                    System.out.print("새로운 내용 : ");
+                    String newBody = sc.nextLine().trim();
+
+                    // updateArticleToDb(id, newTitle, newBody);
+
+                    utilSecUpdateDB(id, newTitle, newBody);
+
+                } else if (cmd.startsWith("article detail")) {
+                    System.out.println("== 게시글 상세보기 ==");
+                    id = Integer.parseInt(cmd.split(" ")[2]);
+
+                    Article foundArticle = getArticleById(id);
+
+                    if (foundArticle == null) {
+                        System.out.println("상세보기할 게시글이 없음");
+                        continue;
+                    }
+                    System.out.println("아이디 : " + foundArticle.getId());
+
+                    System.out.println("제목 : " + foundArticle.getTitle());
+                    System.out.println("내용 : " + foundArticle.getBody());
+                } else {
+                    System.out.println("이외의 명령어는 사용할 수 없습니다.");
+                }
             }
-
-            if (cmd.equals("article write")) {
-                System.out.println("== 글쓰기 ==");
-
-                System.out.print("제목 : ");
-                String title = sc.nextLine().trim();
-
-                System.out.print("내용 : ");
-                String body = sc.nextLine().trim();
-
-                id = insertArticleToDb(title, body);
-
-                System.out.printf("%d번째 게시물 작성 완료\n", id);
-
-            } else if (cmd.equals("article list")) {
-                System.out.println("== 목록 ==");
-                List<Article> articles = getArticleFromDb();
-
-                if (articles == null) {
-                    System.out.println("게시글이 없습니다.");
-                    continue;
-                }
-
-                System.out.println(" 번호 | 작성일 | 수정일 | 제목 | 내용");
-                for (Article article : articles) {
-                    System.out.println(article.toString());
-                }
-
-            } else if (cmd.startsWith("article delete")) {
-                System.out.println("== 삭제 ==");
-                id = Integer.parseInt(cmd.split(" ")[2]);
-
-                deleteArticleToDb(id);
-
-            } else if (cmd.startsWith("article modify")) {
-                System.out.println("== 게시글 수정 ==");
-                id = Integer.parseInt(cmd.split(" ")[2]);
-
-                System.out.print("새로운 제목 : ");
-                String newTitle = sc.nextLine().trim();
-
-                System.out.print("새로운 내용 : ");
-                String newBody = sc.nextLine().trim();
-
-                updateArticleToDb(id, newTitle, newBody);
-
-
-            } else if (cmd.startsWith("article detail")) {
-                System.out.println("== 게시글 상세보기 ==");
-                id = Integer.parseInt(cmd.split(" ")[2]);
-
-                Article foundArticle = getArticleById(id);
-
-                if (foundArticle == null) {
-                    System.out.println("상세보기할 게시글이 없음");
-                    continue;
-                }
-                System.out.println("아이디 : " + foundArticle.getId());
-
-                System.out.println("제목 : " + foundArticle.getTitle());
-                System.out.println("내용 : " + foundArticle.getBody());
-            } else {
-                System.out.println("이외의 명령어는 사용할 수 없습니다.");
-            }
+        } catch (SQLException e){
+            System.out.println("에러 : " + e.getMessage());
+        }finally {
+            try{
+                if(conn != null) conn.close(); }catch (SQLException e){sc.close();}
         }
         System.out.println("== 프로그램 종료 ==");
-        sc.close();
+    }
 
+    private void RollUpUser(String username, String loginId, String loginPw){
+
+        SecSql sql = new SecSql();
+        sql.append("INSERT INTO `user` ");
+        sql.append("SET userName = ?, ", username);
+        sql.append("loginId = ?, ", loginId);
+        sql.append("loginPw = ?, ", loginPw);
+        sql.append("joinDate = NOW();");
+
+        DBUtil.insert(conn, sql);
+
+    }
+
+    public boolean LoginIdDuplicate(String loginId){
+        SecSql sql = new SecSql();
+
+        sql.append("SELECT COUNT(*) > 0");
+        sql.append("FROM `user` ");
+        sql.append("WHERE loginId = ?;", loginId);
+
+        return DBUtil.selectRowBooleanValue(conn, sql);
     }
 
     private static Article getArticleById(int id) {
@@ -97,6 +185,72 @@ public class App {
             }
         }
         return null;
+    }
+
+    private void utilSecWriteToDB(){
+        System.out.print("제목 : ");
+        String title = sc.nextLine();
+        System.out.print("내용 : ");
+        String body = sc.nextLine();
+
+        SecSql sql = new SecSql();
+        sql.append("INSERT INTO article");
+        sql.append("SET regDate = NOW(), updateDate = NOW()");
+        sql.append(", title = ?", title);
+        sql.append(", `body` = ?", body);
+
+        int id = DBUtil.insert(conn, sql);
+        System.out.printf("%d번 게시물 작성 완료\n",id);
+    }
+
+    private void utilSecListDB(){
+
+        SecSql sql = new SecSql();
+        sql.append("SELECT * FROM article;");
+
+        List<Map<String, Object>> articleRows = DBUtil.selectRows(conn, sql);
+
+        System.out.println(" 번호 | 작성일 | 수정일 | 제목 | 내용");
+        for (Map<String, Object> articleRow : articleRows) {
+            int id = (int) articleRow.get("id");
+            String regDate = (String)articleRow.get("regDate").toString();
+            String updateDate = (String)articleRow.get("updateDate").toString();
+            String title = (String)articleRow.get("title").toString();
+            String body = (String)articleRow.get("body").toString();
+
+            System.out.printf("%d | %s | %s | %s | %s\n", id, regDate, updateDate, title, body);
+
+        }
+    }
+
+    private void utilSecDeleteDB(int id){
+        System.out.println("게시글 삭제");
+
+        SecSql sql = new SecSql();
+        sql.append("DELETE FROM article WHERE id = ?", id);
+
+        DBUtil.delete(conn, sql);
+
+        System.out.printf("%d 번 게시글 삭제 완료\n", id);
+
+    }
+
+    private void utilSecUpdateDB(int id, String title, String body){
+
+        System.out.println("게시글 수정");
+
+        SecSql sql = new SecSql();
+
+        sql.append("UPDATE article ");
+        sql.append("SET title = ?, ", title);
+        sql.append("`body` = ? ,", body);
+        sql.append("updateDate = NOW() ");
+        sql.append("WHERE id = ?", id);
+
+        DBUtil.update(conn, sql);
+
+        System.out.printf("%d 번 게시물 수정 완료\n", id);
+
     }
 
     private static int insertArticleToDb(String title, String body) {
@@ -275,5 +429,4 @@ public class App {
             }
         }
     }
-
 }
