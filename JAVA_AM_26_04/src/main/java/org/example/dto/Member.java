@@ -1,5 +1,7 @@
 package org.example.dto;
 
+import java.util.Map;
+
 public class Member extends Dto{
 
     private String loginId;
@@ -15,6 +17,19 @@ public class Member extends Dto{
         this.loginPw = loginPw;
         this.username = username;
 
+    }
+
+    public Member(Map<String,Object> memberMap){
+        this.id = id;
+        this.regDate = regDate;
+        this.updateDate = updateDate;
+        this.loginId = loginId;
+        this.loginPw = loginPw;
+        this.username = username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
     }
 
     public void setLoginId(String loginId) {
@@ -49,7 +64,7 @@ public class Member extends Dto{
         return loginPw;
     }
 
-    public String getUsername() {
+    public static String getUsername() {
         return username;
     }
 

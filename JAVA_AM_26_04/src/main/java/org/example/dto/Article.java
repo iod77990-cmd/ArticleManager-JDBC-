@@ -1,8 +1,6 @@
 package org.example.dto;
 
-import java.sql.*;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Map;
 
 public class Article extends Dto {
 
@@ -17,6 +15,15 @@ public class Article extends Dto {
             this.body = body;
         }
 
+        public Article(Map<String, Object> articleMap) {
+            this.id = (int) articleMap.get("id");
+            this.regDate = (String) articleMap.get("regDate");
+            this.updateDate = (String) articleMap.get("updateDate");
+            this.title = (String) articleMap.get("title");
+            this.body = (String) articleMap.get("body");
+        }
+
+
 
     public String getUpdateDate() {
         return updateDate;
@@ -30,11 +37,11 @@ public class Article extends Dto {
             return id;
         }
 
-        public String getTitle() {
+    public String getTitle() {
             return title;
         }
 
-        public String getBody() {
+    public String getBody() {
             return body;
         }
 
@@ -69,6 +76,7 @@ public class Article extends Dto {
                 '}';
     }
 
+/*
     private static List<Article> getArticleFromDb() {
         List<Article> articles = new ArrayList<>();
         Connection conn = null;
@@ -122,4 +130,7 @@ public class Article extends Dto {
         }
         return articles;
     }
+
+ */
+
 }
